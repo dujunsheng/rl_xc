@@ -1,0 +1,21 @@
+<routes>
+    <!-- 定义车辆类型 -->
+    <vType accel="3" color="1,0,0" decel="4" hphm="3be8c5f15a362851a6812b38cc7bde77" hpzl="02" id="type6666" lcCooperative="0" lcKeepRight="1" lcSpeedGain="1" lcStrategic="1" length="4.3" maxSpeed="9" minGap="1" sigma="0.0" tau="1.0" width="1.7"/>
+    <!-- 定义车流 -->
+    <flow id="221888670#10__01" begin="25200" end="36000" from="63219" to="64422" vehsPerHour="100" type="type6666" departLane="free"/>
+    <flow id="221888670#10__02" begin="25200" end="36000" from="63385" to="60278" vehsPerHour="100" type="type6666" departLane="free"/>
+    <flow id="221888670#10__03" begin="25200" end="36000" from="63219" to="63257" vehsPerHour="100" type="type6666" departLane="free"/>
+    <flow id="221888670#10__04" begin="25200" end="36000" from="63258" to="64422" vehsPerHour="100" type="type6666" departLane="free"/>
+    <flow id="221888670#10__05" begin="25200" end="36000" from="19775645" to="63217" vehsPerHour="100" type="type6666" departLane="free"/>
+    <flow id="221888670#10__06" begin="25200" end="36000" from="63366" to="63713" vehsPerHour="100" type="type6666" departLane="free"/>
+    <flow id="221888670#10__07" begin="25200" end="36000" from="60140" to="13467378" vehsPerHour="100" type="type6666" departLane="free"/>
+    <flow id="221888670#10__08" begin="25200" end="36000" from="60267" to="63721" vehsPerHour="100" type="type6666" departLane="free"/>
+    <flow id="221888670#10__09" begin="25200" end="36000" from="62182" to="19775640" vehsPerHour="100" type="type6666" departLane="free"/>
+    <flow id="221888670#10__10" begin="25200" end="36000" from="64166" to="63257" vehsPerHour="100" type="type6666" departLane="free"/>
+    <flow id="221888670#10__11" begin="25200" end="36000" from="19775645" to="13467378" vehsPerHour="100" type="type6666" departLane="free"/>
+    <flow id="221888670#10__12" begin="25200" end="36000" from="63714" to="63721" vehsPerHour="100" type="type6666" departLane="free"/>
+    <flow id="221888670#10__13" begin="25200" end="36000" from="64166" to="60141" vehsPerHour="100" type="type6666" departLane="free"/>
+
+    <flow id="221888670#10__15" begin="25200" end="36000" from="63258" to="63713" period="2" type="type6666" departLane="free"/>
+</routes>
+

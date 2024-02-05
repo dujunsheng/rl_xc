@@ -1,0 +1,12 @@
+.DS_Store
+.idea
+libsumo
+model/aofeng/
+model/attention/
+result/aofeng/*
+result/attention/
+plt_csv/*.pdf
+plt_csv/*.png
+__pycache__/
+conf/*.xml
+record/
