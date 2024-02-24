@@ -41,13 +41,13 @@ TAU = 0.005
 LR = 1e-2
 MEM_CAPACITY = 1000
 PERIOD = 20
-PARKING_MAX = 150
+PARKING_MAX = 1000
 
 Transition = namedtuple('Transition',
                         ('state', 'action', 'next_state', 'reward'))
 
 # if gpu is to be used
-device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+device = torch.device("cpu")
 
 
 class Optimizer(object):
@@ -55,8 +55,8 @@ class Optimizer(object):
         # try to load best model
         if os.path.exists(best_model_path):
             # load best model
-            self.policy_net = torch.load(best_model_path).to(device)
-            self.target_net = torch.load(best_model_path).to(device)
+            self.policy_net = torch.load(best_model_path, map_location='cpu').to(device)
+            self.target_net = torch.load(best_model_path, map_location='cpu').to(device)
         else:
             self.policy_net = DQN(n_observations, n_actions).to(device)
             self.target_net = DQN(n_observations, n_actions).to(device)
@@ -229,9 +229,13 @@ class ActionSelector(object):
         eps_threshold = self.eps_threshold()
 
         currentLane = traci.vehicle.getLaneID(veh.veh_id)
+        park_areas = ['64422', '63366']
         if veh.current.state is None:
             return -1
-        elif currentLane == '' or (traci.lane.getLength(currentLane) < 100) or veh.tooCloseToPark():\
+        elif currentLane.split('_')[0] not in park_areas:
+            # 车辆所在道路没有停靠区域
+            return 0
+        elif currentLane == '' or (traci.lane.getLength(currentLane) < 100) or veh.tooCloseToPark():
             return 0
         elif veh.been_halted:
             return 0
@@ -252,6 +256,8 @@ class ActionSelector(object):
                     self.steps_done += 1
                 with torch.no_grad():
                     state = torch.tensor(veh.current.state[2:], dtype=torch.float32, device=device).unsqueeze(0)
+                    if self.optimizer.generate_from_policy(state) == 0:
+                        a = 1
                     return self.optimizer.generate_from_policy(state)
 
 

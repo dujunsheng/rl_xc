@@ -75,11 +75,11 @@ if __name__ == '__main__':
     stop_env = False
 
     # inputs
-    sumo_config = './aofeng/sim_train.sumocfg'
-    sumo_rd_net_url = './aofeng/xuancheng0721_adjust4_speedvar2.net.xml'
-    sumo_target_logs_csv = './aofeng/veh_stop.csv' if stop_env else './veh_log_blank.csv'
+    sumo_config = './conf/aofeng.sumocfg'
+    sumo_rd_net_url = './conf/xuancheng1116_6.net.xml'
+    sumo_target_logs_csv = './conf/veh_log_stop.csv'
     # outputs
-    best_model_path = 'model/multi/best_model.pt'
+    best_model_path = 'model/aofeng/best_model.pt'
 
     n_actions = 4
     n_observations = len(Simulation.Observation._fields)

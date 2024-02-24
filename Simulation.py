@@ -30,7 +30,7 @@ class Simulation:
     __restart_from: dict
     max_spd = 20
     MAX_PARKING_DURATION = 900
-    MAX_DIS_PARKING = 10
+    MAX_DIS_PARKING = 20
 
     def __init__(self, config, rd_net_url, target_logs_csv,need_gui=False):
         self.need_gui = need_gui
@@ -91,8 +91,11 @@ class Simulation:
         online_target = self.__target_veh_ids.intersection(veh_online)
         offline_target = self.__target_veh_ids.intersection(veh_offline)
 
+        # 断电测试
+        # if '221888670#10__15.46' in veh_online:
+        #     a = 1
 
-        terminated = (self.get_time() >= traci.simulation.getEndTime())
+        terminated = (traci.simulation.getMinExpectedNumber() <= 0)
         truncated = (not traci.isLoaded())
         veh_output = []
 
@@ -207,10 +210,7 @@ class Simulation:
 
         time_remain = (self.__target_logs[vehID].out_time - self.__target_logs[vehID].in_time) - self.getOnlineParkTime(vehID) - trt
 
-        trt = 0
-        
-
-        p_time = self.getOnlineParkTime(vehID) / 10.0
+        p_time = self.getOnlineParkTime(vehID)
         # return [tmp1, tmp2, dis_to_end, self.timeRemain(vehID), spd, trt, p_time]
         return Observation(tmp1, tmp2, dis_to_end, time_remain, spd, trt, p_time)
 
@@ -219,7 +219,8 @@ class Simulation:
 
     def tooCloseToPark(self, vehID):
         return traci.lane.getLength(traci.vehicle.getLaneID(vehID)) \
-            - traci.vehicle.getLanePosition(vehID) < Simulation.MAX_DIS_PARKING
+            - traci.vehicle.getLanePosition(vehID) < self.MAX_DIS_PARKING and \
+               traci.vehicle.getLanePosition(vehID) < self.MAX_DIS_PARKING
 
     def getOnlineParkTime(self, vehID):
         if vehID in self.__stopped_from:
@@ -362,12 +363,21 @@ class Simulation:
     #     return t_expected - self.__now
 
     def tryStopVeh(self, vehID, spd, currentRd, lanePos, routeID, routeIdx):
-        if vehID not in self.__stopped_from:
+        if '221888670#10__15.46' == vehID:
+            a = 1
+        if vehID not in self.__stopped_from and traci.vehicle.getStopState(vehID) == 1:
             self.__stopped_from[vehID] = self.__now
         if spd <= 0:
             return True
+        if int(traci.vehicle.getLaneID(vehID).split('_')[1]) > 1:
+            traci.vehicle.changeLane(vehID, 1, duration=2)
+            return False
         if traci.vehicle.getLaneID(vehID).split('_')[1] != '0':
-            traci.vehicle.changeLane(vehID, 0, duration=2)
+            if len(traci.vehicle.getRightLeaders(vehID)) == 0 or traci.vehicle.getRightLeaders(vehID)[0][1] > 15:
+                #  0 车道上具有足够的空间提供减速或者变道
+                traci.vehicle.changeLane(vehID, 0, duration=2)
+            if spd > 3:
+                traci.vehicle.slowDown(vehID, 3, 1)
             return False
         elif spd > 0.1:
             traci.vehicle.slowDown(vehID, 0, 1)

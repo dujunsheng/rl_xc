@@ -175,9 +175,11 @@ def create_stop_vehicle():
 
     inputs = root.findall("vehicle")
     data = pd.DataFrame(columns=['vehID', 'in_time', 'out_time'])
+    targets = ['15', '04', '06']
     for item in inputs:
-        if random.random() < 0.1:
-            item.set('color', '1,1,0')
+        if random.random() < 0.1 and item.get('id').split('.')[0].split('_')[2] in targets and \
+                float(item.get('depart')) < 28800:
+            item.set('color', '1,1,1')
             data.loc[len(data.index)] = [item.get('id'), float(item.get('depart')),
                                          float(item.get('depart')) + random.randint(300, 900)]
 

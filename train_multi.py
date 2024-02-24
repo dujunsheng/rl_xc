@@ -16,8 +16,8 @@ if __name__ == '__main__':
     # inputs
     sumo_config = './conf/aofeng.sumocfg'
     sumo_rd_net_url = './conf/xuancheng1116_6.net.xml'
-    veh_logs_train = './conf/veh_log_bk.csv'
-    veh_logs_test = './conf/veh_log_test'
+    veh_logs_train = './conf/veh_log_train.csv'
+    veh_logs_test = './conf/veh_log_train'
     batch_size = 5
 
     name = dt.datetime.now().strftime("%Y%m%d%H%M")
