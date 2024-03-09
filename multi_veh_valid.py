@@ -77,9 +77,9 @@ if __name__ == '__main__':
     # inputs
     sumo_config = './conf/aofeng.sumocfg'
     sumo_rd_net_url = './conf/xuancheng1116_6.net.xml'
-    sumo_target_logs_csv = './conf/veh_log_stop.csv'
+    sumo_target_logs_csv = './conf/veh_stop_truth.csv'
     # outputs
-    best_model_path = 'model/aofeng/best_model.pt'
+    best_model_path = 'model/aofeng/18_epoch_model.pt'
 
     n_actions = 4
     n_observations = len(Simulation.Observation._fields)

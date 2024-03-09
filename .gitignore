@@ -10,3 +10,6 @@ plt_csv/*.png
 __pycache__/
 conf/*.xml
 record/
+conf.zip
+tool/*.csv
+conf/*.csv

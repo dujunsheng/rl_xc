@@ -11,31 +11,31 @@ from random import randint
 
 # 估计 target 目标车辆的停车时间
 
-target = pd.read_csv('conf/veh_log_stop.csv')
-trip_info = pd.read_csv('record/no_stop_2_test_tripinfo.csv', sep=';')
+target = pd.read_csv('conf/veh_stop_truth.csv')
+trip_info = pd.read_csv('conf/dqn_3_test_tripinfo.csv', sep=';')
 target_stop = {}
 stop_dict = dict(zip(target['vehID'].values, [False for i in range (len(target.values))]))
 status_dict = dict(zip(target['vehID'].values, [False for i in range (len(target.values))]))
 sim_dict = {} # 产生一个随机停车点
 time_stop = {}
+stop = pd.read_csv('./conf/dqn_3_test_tripinfo.csv', sep=';')
 
 MAX_DIS_PARKING = 20
 
+df = pd.read_csv('./conf/sim_dict_truth.csv')
+sim_dict = dict(zip(df['vehid'],df['depart']))
+err_tar = target[~target['vehID'].isin(sim_dict.keys())]
+
 for idx, data in target.iterrows():
-    a = trip_info.loc[trip_info['tripinfo_id'] == data['vehID'], 'tripinfo_duration']
-    if not a.empty:
-        target_stop[data['vehID']] = data['out_time'] - data['in_time'] - a.values[0] if data['out_time'] - data['in_time'] - a.values[0] > 0 else 0
-        sim_dict[data['vehID']] = data['in_time'] + randint(0, a.values[0])
+    target_stop[data['vehID']] = trip_info[trip_info['tripinfo_id'] == data['vehID']]['tripinfo_stopTime'].values[0]
+    if data['vehID'] not in sim_dict.keys():
+        sim_dict[data['vehID']] = data['in_time'] + randint(0, data['out_time'] - target_stop[data['vehID']])
         # print(data['vehID'], data['out_time'] - data['in_time'], target_stop[data['vehID']])
-    else:
-        print(data['vehID'])
 #
 # df = pd.DataFrame.from_dict(sim_dict, orient='index',columns=['depart'])
 # df = df.reset_index().rename(columns = {'index':'vehid'})
-# df.to_csv('sim_dict.csv', index=False)
+# df.to_csv('sim_dict_bk2.csv', index=False)
 
-df = pd.read_csv('sim_dict.csv')
-sim_dict = dict(zip(df['vehid'],df['depart']))
 
 
 traci.start(["sumo-gui", "-c", 'conf/aofeng.sumocfg'])

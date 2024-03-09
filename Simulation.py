@@ -363,8 +363,8 @@ class Simulation:
     #     return t_expected - self.__now
 
     def tryStopVeh(self, vehID, spd, currentRd, lanePos, routeID, routeIdx):
-        if '221888670#10__15.46' == vehID:
-            a = 1
+        # if '221888670#10__15.46' == vehID:
+        #     a = 1
         if vehID not in self.__stopped_from and traci.vehicle.getStopState(vehID) == 1:
             self.__stopped_from[vehID] = self.__now
         if spd <= 0:
@@ -373,11 +373,11 @@ class Simulation:
             traci.vehicle.changeLane(vehID, 1, duration=2)
             return False
         if traci.vehicle.getLaneID(vehID).split('_')[1] != '0':
-            if len(traci.vehicle.getRightLeaders(vehID)) == 0 or traci.vehicle.getRightLeaders(vehID)[0][1] > 15:
+            if spd > 3:
+                traci.vehicle.slowDown(vehID, 1, 1)
+            if len(traci.vehicle.getRightLeaders(vehID)) == 0 or traci.vehicle.getRightLeaders(vehID)[0][1] > 10:
                 #  0 车道上具有足够的空间提供减速或者变道
                 traci.vehicle.changeLane(vehID, 0, duration=2)
-            if spd > 3:
-                traci.vehicle.slowDown(vehID, 3, 1)
             return False
         elif spd > 0.1:
             traci.vehicle.slowDown(vehID, 0, 1)
