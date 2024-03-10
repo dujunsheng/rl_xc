@@ -19,20 +19,19 @@ class Simulation:
     __config: str
     __target_logs: dict
     __target_veh_ids: set
-    __veh_entrance: dict
-    __veh_exit: dict
-    __veh_route: dict
+    # __veh_entrance: dict
+    # __veh_exit: dict
     __connections: dict
     __lanes: dict
-    __route_len: dict
-    __now: float
-    __stopped_from: dict
-    __restart_from: dict
+    # __route_len: dict
+    # __now: float
+    # __stopped_from: dict
+    # __restart_from: dict
     max_spd = 20
     MAX_PARKING_DURATION = 900
     MAX_DIS_PARKING = 20
 
-    def __init__(self, config, rd_net_url, target_logs_csv,need_gui=False):
+    def __init__(self, config, rd_net_url, target_logs_csv, need_gui=False, label='default'):
         self.need_gui = need_gui
         self.config = config
         self.__target_logs = dict()
@@ -59,27 +58,32 @@ class Simulation:
         self.__route_len = dict()
         self.__veh_entrance = dict()
         self.__veh_exit = dict()
-        self.__veh_route = dict()
         self.__stopped_from = dict()
         self.__restart_from = dict()
+        self.__now = 0
+        self.label = label
+        self.connection = None
 
     def connectSumo(self):
         if self.need_gui:
-            traci.start(["sumo-gui", "-c", self.config, '--delay', '1', '--time-to-teleport', '-1', '-W', '-S', '-Q'])
+            traci.start(["sumo-gui", "-c", self.config, '--delay', '1', '--time-to-teleport', '-1', '-W', '-S', '-Q'],
+                        label=self.label)
         else:
-            traci.start(["sumo", "-c", self.config, '--time-to-teleport', '-1', '-W'])
-        now = traci.simulation.getTime()
+            traci.start(["sumo", "-c", self.config, '--time-to-teleport', '-1', '-W'], label=self.label)
+        self.connection = traci.getConnection(self.label)
+        now = self.connection.simulation.getTime()
         self.__now = now
 
-    def resetSim(self, valid=False):
-        traci.close()
-        self.__connections = dict()
+    def reset_sim_mem(self):
         self.__route_len = dict()
         self.__veh_entrance = dict()
         self.__veh_exit = dict()
-        self.__veh_route = dict()
         self.__stopped_from = dict()
         self.__restart_from = dict()
+
+    def resetSim(self, valid=False):
+        self.connection.close()
+        self.reset_sim_mem()
         self.connectSumo()
         return self.runUntilTargetShow()
 
@@ -127,15 +131,15 @@ class Simulation:
         return reward
 
     def step(self):
-        traci.simulationStep()
-        now = traci.simulation.getTime()
+        self.connection.simulationStep()
+        now = self.connection.simulation.getTime()
         self.__now = now
 
         # Returns a list of all objects in the network.
-        veh_online = traci.vehicle.getIDList()
+        veh_online = self.connection.vehicle.getIDList()
 
         # Returns a list of ids of vehicles which arrived
-        veh_offline = traci.simulation.getArrivedIDList()
+        veh_offline = self.connection.simulation.getArrivedIDList()
 
         new_veh = set(veh_online).difference(set(self.__veh_entrance.keys()))
         pass_veh = set(veh_offline)
@@ -352,7 +356,6 @@ class Simulation:
     def disToEnd(self, vehID):
         lanePos = traci.vehicle.getLanePosition(vehID)
         routeID = traci.vehicle.getRouteID(vehID)
-        self.__veh_route[vehID] = routeID
         routeIdx = traci.vehicle.getRouteIndex(vehID)
         mileage_cap = self.est_mileage(routeID, routeIdx, lanePos)
         journey = self.wholeRouteLen(routeID)
@@ -441,9 +444,9 @@ class Simulation:
 
 
 if __name__ == '__main__':
-    sim = Simulation('./aofeng.sumocfg', './xuancheng1116_2.net.xml', 'veh_log_test.csv')
+    sim = Simulation('./conf/aofeng.sumocfg', './conf/xuancheng1116_6.net.xml', './conf/veh_log_train.csv')
     sim.connectSumo()
     sim.runUntilTargetShow()
-    for v_id in sim._Simulation__target_veh_ids:
-        print(sim.observe(v_id))
+    # for v_id in sim._Simulation__target_veh_ids:
+    #     print(sim.observe(v_id))
     traci.close(False)
