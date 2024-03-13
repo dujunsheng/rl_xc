@@ -7,7 +7,7 @@ import torch
 import strategies
 from Simulation import Simulation
 import Simulation as sim
-import traci as traci
+# import traci as traci
 # import traci
 WatchVar = namedtuple('WatchVar', ('time', 'vs_before', 'vs_after', 'action', 'reward'))
 
@@ -30,9 +30,9 @@ class VehAgent(object):
         self.before = self.current
         self.current = new_sample
 
-    @staticmethod
-    def currentTime():
-        return traci.simulation.getTime()
+    # @staticmethod
+    def currentTime(self):
+        return self.sim.get_time()
 
     def advanceActionTime(self, duration):
         self.next_action_time = self.currentTime() + duration
@@ -45,26 +45,26 @@ class VehAgent(object):
         return self.next_action_time <= self.currentTime()
 
     def keep(self):
-        currentSpd = traci.vehicle.getSpeed(self.veh_id)
+        currentSpd = self.sim.connection.vehicle.getSpeed(self.veh_id)
         if self.is_halted:
             if currentSpd > 0:
-                currentRd = traci.vehicle.getRoadID(self.veh_id)
-                lanePos = traci.vehicle.getLanePosition(self.veh_id)
-                routeID = traci.vehicle.getRouteID(self.veh_id)
-                routeIdx = traci.vehicle.getRouteIndex(self.veh_id)
+                currentRd = self.sim.connection.vehicle.getRoadID(self.veh_id)
+                lanePos = self.sim.connection.vehicle.getLanePosition(self.veh_id)
+                routeID = self.sim.connection.vehicle.getRouteID(self.veh_id)
+                routeIdx = self.sim.connection.vehicle.getRouteIndex(self.veh_id)
                 self.sim.tryStopVeh(self.veh_id, currentSpd, currentRd, lanePos, routeID, routeIdx)
         else:
-            if traci.vehicle.isStopped(self.veh_id):
+            if self.sim.connection.vehicle.isStopped(self.veh_id):
                 self.sim.resumeVeh(self.veh_id)
 
     def applyAction(self, action, period):
         self.applied_action = action
 
-        currentRd = traci.vehicle.getRoadID(self.veh_id)
-        lanePos = traci.vehicle.getLanePosition(self.veh_id)
-        routeID = traci.vehicle.getRouteID(self.veh_id)
-        routeIdx = traci.vehicle.getRouteIndex(self.veh_id)
-        currentSpd = traci.vehicle.getSpeed(self.veh_id)
+        currentRd = self.sim.connection.vehicle.getRoadID(self.veh_id)
+        lanePos = self.sim.connection.vehicle.getLanePosition(self.veh_id)
+        routeID = self.sim.connection.vehicle.getRouteID(self.veh_id)
+        routeIdx = self.sim.connection.vehicle.getRouteIndex(self.veh_id)
+        currentSpd = self.sim.connection.vehicle.getSpeed(self.veh_id)
         # act action
         if action != -1:
             need_to_park = True
@@ -89,7 +89,7 @@ class VehAgent(object):
                     # 新动作为行驶，且当前已停车，按要求启动
                     self.is_halted = False
                     self.been_halted = True
-                    if traci.vehicle.isStopped(self.veh_id):
+                    if self.sim.connection.vehicle.isStopped(self.veh_id):
                         self.sim.resumeVeh(self.veh_id)
             else:
                 # 状态：行驶中

@@ -13,7 +13,7 @@
 	
 	<time>
 		<begin value="25200"/>
-		<end value="28800"/>
+		<end value="25400"/>
 		<!--<end value="32400"/>-->
 	</time>
 
@@ -23,6 +23,7 @@
 		<seed value="3561" />
 	</random_number>
 
+    <!--
     <output>
 		<fcd-output value="test_fcd4calib.xml" />
 		<tripinfo-output value="test_tripinfo.xml" />
@@ -33,5 +34,6 @@
         <duration-log.statistics value="true" />
         <no-step-log value="true" />
     </report>
+    -->
 
 </configuration>

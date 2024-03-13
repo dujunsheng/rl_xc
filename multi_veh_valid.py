@@ -1,23 +1,23 @@
 import random
 from itertools import count
+import numpy as np
 
 import Simulation as Simulation
-
 import strategies
 from VehAgent import VehAgent
 from strategies import Optimizer, ActionSelector
 
-class Validation:
+class Validation():
 
     __n_actions = 4
 
     def __init__(self, sumo_config, sumo_rd_net_url, sumo_target_logs_csv,
-                 model_path, n_observations, n_actions):
+                 model_path, n_observations, n_actions, label='default'):
 
         # initial functional parts:
         self.optimizer = Optimizer(n_observations, n_actions, model_path)
-        self.act_selector = ActionSelector(n_actions, self.optimizer)
-        self.sim = Simulation.Simulation(sumo_config, sumo_rd_net_url, sumo_target_logs_csv, need_gui=True)
+        self.sim = Simulation.Simulation(sumo_config, sumo_rd_net_url, sumo_target_logs_csv, need_gui=True, label=label)
+        self.act_selector = ActionSelector(n_actions, self.optimizer, sim=self.sim)
 
     def run_sim(self):
         self.sim.connectSumo()
@@ -52,12 +52,6 @@ class Validation:
                 veh_agents_arrived.append(va)
             # add new loaded vehicles
             for va in new_veh_agents:
-
-
-                # compute average speed
-                # sped = self.sim.wholeRouteLen('!' + va.veh_id) / (self.sim.except_travel_time(va.veh_id))
-                # self.sim.set_veh_sped(va.veh_id, sped)
-
                 veh_agents_dict[va.veh_id] = va
 
             # 处理仿真完成事件
@@ -68,6 +62,28 @@ class Validation:
                     return True
                 break
         return False
+
+    def set_para(self, para):
+        tau = para[0]
+        mgap = para[1]
+        mspd = para[2]
+        tids = self.sim.connection.vehicletype.getIDList()
+        for tid in tids:
+            self.sim.connection.vehicletype.setTau(tid, tau)
+            self.sim.connection.vehicletype.setMinGap(tid, mgap)
+        eids = self.sim.connection.edge.getIDList()
+        for eid in eids:
+            self.sim.connection.edge.setMaxSpeed(eid, mspd)
+
+    def run_with(self, para):
+        single_ans = np.Inf
+        self.sim.connectSumo()
+        self.set_para(para)
+        result = self.run_sim()
+        self.sim.reset_sim_mem()
+        if result:
+            single_ans = self.sim.calPerformance()
+        return single_ans
 
 
 if __name__ == '__main__':

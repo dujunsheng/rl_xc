@@ -50,9 +50,9 @@ plt.subplots_adjust(bottom=0.15)
 # sns.distplot(data2['loss'], bins=int(100), kde=False, hist_kws={'color':'green'},
 #              label=('不停车','直方图'), norm_hist=False)
 
-stop['avg_speed'] = (stop['tripinfo_routeLength'].div(stop['tripinfo_duration'])).round(2)
-sns.distplot(stop['avg_speed'], bins=int((stop['avg_speed'].max() - stop['avg_speed'].min())/0.1), kde=False, hist_kws={'color':'purple'},
-             label=('停车','直方图'), norm_hist=False)
+# stop['avg_speed'] = (stop['tripinfo_routeLength'].div(stop['tripinfo_duration'])).round(2)
+# sns.distplot(stop['avg_speed'], bins=int((stop['avg_speed'].max() - stop['avg_speed'].min())/0.1), kde=False, hist_kws={'color':'purple'},
+#              label=('停车','直方图'), norm_hist=False)
 
 # data.hist(grid=False,column="tripinfo_duration_y",bins=1000)
 

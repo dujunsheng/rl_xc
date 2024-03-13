@@ -65,11 +65,12 @@ class Simulation:
         self.connection = None
 
     def connectSumo(self):
-        if self.need_gui:
-            traci.start(["sumo-gui", "-c", self.config, '--delay', '1', '--time-to-teleport', '-1', '-W', '-S', '-Q'],
-                        label=self.label)
-        else:
-            traci.start(["sumo", "-c", self.config, '--time-to-teleport', '-1', '-W'], label=self.label)
+        if self.connection is None:
+            if self.need_gui:
+                traci.start(["sumo-gui", "-c", self.config, '--delay', '1', '--time-to-teleport', '-1', '-W', '-S', '-Q'],
+                            label=self.label)
+            else:
+                traci.start(["sumo", "-c", self.config, '--time-to-teleport', '-1', '-W'], label=self.label)
         self.connection = traci.getConnection(self.label)
         now = self.connection.simulation.getTime()
         self.__now = now
@@ -88,18 +89,23 @@ class Simulation:
         return self.runUntilTargetShow()
 
     def runUntilTargetShow(self):
-        # while traci.simulation.getMinExpectedNumber() > 0 and no_target:
 
-        veh_online, veh_offline = self.step()
+        no_target = True
+        online_target = set()
+        offline_target = set()
 
-        online_target = self.__target_veh_ids.intersection(veh_online)
-        offline_target = self.__target_veh_ids.intersection(veh_offline)
+        # while self.connection.simulation.getMinExpectedNumber() > 0 and no_target:
+        while self.connection.simulation.getTime() < self.connection.simulation.getEndTime() and no_target:
+            veh_online, veh_offline = self.step()
+            online_target = self.__target_veh_ids.intersection(veh_online)
+            offline_target = self.__target_veh_ids.intersection(veh_offline)
+            no_target = ((online_target == set()) and (offline_target == set()))
 
         # 断电测试
         # if '221888670#10__15.46' in veh_online:
         #     a = 1
 
-        terminated = (traci.simulation.getMinExpectedNumber() <= 0)
+        terminated = self.connection.simulation.getTime() < self.connection.simulation.getEndTime()
         truncated = (not traci.isLoaded())
         veh_output = []
 
@@ -112,8 +118,8 @@ class Simulation:
 
     def run_until_record_in_out(self):
         veh_output, terminated, truncated = self.runUntilTargetShow()
-        veh_online = traci.vehicle.getIDList()
-        veh_offline = traci.simulation.getArrivedIDList()
+        veh_online = self.connection.vehicle.getIDList()
+        veh_offline = self.connection.simulation.getArrivedIDList()
         return veh_output, terminated, truncated, veh_online, veh_offline
 
     def calReward(self, sample_0: VehSample, sample_1: VehSample):
@@ -158,19 +164,19 @@ class Simulation:
         """
 
         # Return the leading vehicle id together with the distance
-        leader = traci.vehicle.getLeader(vehID)
+        leader = self.connection.vehicle.getLeader(vehID)
 
-        spd = traci.vehicle.getSpeed(vehID)
-        routeID = traci.vehicle.getRouteID(vehID)
-        routeIdx = traci.vehicle.getRouteIndex(vehID)
-        laneID = traci.vehicle.getLaneID(vehID)
-        laneLen = traci.lane.getLength(laneID)
+        spd = self.connection.vehicle.getSpeed(vehID)
+        routeID = self.connection.vehicle.getRouteID(vehID)
+        routeIdx = self.connection.vehicle.getRouteIndex(vehID)
+        laneID = self.connection.vehicle.getLaneID(vehID)
+        laneLen = self.connection.lane.getLength(laneID)
 
         # # Returns the distance to the starting point like an odometer.
-        mileage = traci.vehicle.getDistance(vehID)
+        mileage = self.connection.vehicle.getDistance(vehID)
 
         # The position of the vehicle along the lane measured in m.
-        lanePos = traci.vehicle.getLanePosition(vehID)
+        lanePos = self.connection.vehicle.getLanePosition(vehID)
 
         if leader is None:
             # max speeding
@@ -181,14 +187,14 @@ class Simulation:
             leaderID = leader[0]
             # min gap not included in the follows, gap >= 0
             gap = leader[1]
-            leading_spd = traci.vehicle.getSpeed(leaderID)
+            leading_spd = self.connection.vehicle.getSpeed(leaderID)
 
         # get running time of line
         t_eclipse = self.timeEclipse(vehID)
 
         # Remaining distance (percentage)
         dis_to_end = self.disToEnd(vehID)
-        routeID = traci.vehicle.getRouteID(vehID)
+        routeID = self.connection.vehicle.getRouteID(vehID)
         whole_end = self.wholeRouteLen(routeID)
         dis_to_end = 0
 
@@ -222,9 +228,9 @@ class Simulation:
         return self.getOnlineParkTime(vehID) > Simulation.MAX_PARKING_DURATION
 
     def tooCloseToPark(self, vehID):
-        return traci.lane.getLength(traci.vehicle.getLaneID(vehID)) \
-            - traci.vehicle.getLanePosition(vehID) < self.MAX_DIS_PARKING and \
-               traci.vehicle.getLanePosition(vehID) < self.MAX_DIS_PARKING
+        return self.connection.lane.getLength(self.connection.vehicle.getLaneID(vehID)) \
+            - self.connection.vehicle.getLanePosition(vehID) < self.MAX_DIS_PARKING and \
+               self.connection.vehicle.getLanePosition(vehID) < self.MAX_DIS_PARKING
 
     def getOnlineParkTime(self, vehID):
         if vehID in self.__stopped_from:
@@ -239,17 +245,17 @@ class Simulation:
 
     def evalOnline(self, vehID):
         # if self.timeEclipse(vehID) == 0:
-        #     spd = traci.vehicle.getSpeed(vehID)
+        #     spd = self.connection.vehicle.getSpeed(vehID)
         # else:
-        #     spd = traci.vehicle.getDistance(vehID) / self.timeEclipse(vehID)
+        #     spd = self.connection.vehicle.getDistance(vehID) / self.timeEclipse(vehID)
         # return -1.*np.abs(self.disToEnd(vehID) / self.timeRemain(vehID) - spd)
 
-        routeID = traci.vehicle.getRouteID(vehID)
-        routeIdx = traci.vehicle.getRouteIndex(vehID)
-        laneID = traci.vehicle.getLaneID(vehID)
-        lanePos = traci.vehicle.getLanePosition(vehID)
+        routeID = self.connection.vehicle.getRouteID(vehID)
+        routeIdx = self.connection.vehicle.getRouteIndex(vehID)
+        laneID = self.connection.vehicle.getLaneID(vehID)
+        lanePos = self.connection.vehicle.getLanePosition(vehID)
         mileage_cap = self.est_mileage(routeID, routeIdx, lanePos)
-        # mileage = traci.vehicle.getDistance(vehID)
+        # mileage = self.connection.vehicle.getDistance(vehID)
         r_len = self.wholeRouteLen(routeID)
         accumulated_park_time = self.getOnlineParkTime(vehID)
         t_out_real = self.__target_logs[vehID].out_time
@@ -303,21 +309,21 @@ class Simulation:
         return self.__target_logs[vehID].out_time - self.__now
 
     def getTraveltime(self, edge_id):
-        n_veh = traci.edge.getLastStepVehicleNumber(edge_id)
-        n_halt = traci.edge.getLastStepHaltingNumber(edge_id)
+        n_veh = self.connection.edge.getLastStepVehicleNumber(edge_id)
+        n_halt = self.connection.edge.getLastStepHaltingNumber(edge_id)
         if (n_veh - n_halt) > 0 :
-            ans = traci.edge.getTraveltime(edge_id)
+            ans = self.connection.edge.getTraveltime(edge_id)
         else:
             ans = self.edgeLen(edge_id) / self.max_spd
         return ans
 
     def est_travel_time(self, routeID, routeIdx, laneID, lanePos):
-        edges = traci.route.getEdges(routeID)
+        edges = self.connection.route.getEdges(routeID)
         _sum = 0
         idx = edges.index(edges[routeIdx])
         for i in range(idx, len(edges)):
             _sum += self.getTraveltime(edges[i])
-        lane_len = traci.lane.getLength(laneID)
+        lane_len = self.connection.lane.getLength(laneID)
         offset = self.getTraveltime(edges[idx]) * lanePos / lane_len
         return _sum - offset
 
@@ -326,11 +332,11 @@ class Simulation:
 
     def edgeLen(self, edge_id):
         lanes = self.__lanes[edge_id]
-        len = np.average([traci.lane.getLength(lane) for lane in lanes])
+        len = np.average([self.connection.lane.getLength(lane) for lane in lanes])
         return len
 
     def routeLen(self, routeID, routeIdx):
-        edges = traci.route.getEdges(routeID)
+        edges = self.connection.route.getEdges(routeID)
         _len = 0
         idx = edges.index(edges[routeIdx])
         if idx > 0:
@@ -339,7 +345,7 @@ class Simulation:
                 # todo: 某些edge之间不存在connection 待查明
                 if ckey in self.__connections:
                     conns = self.__connections[ckey]
-                    _len += np.average([traci.lane.getLength(conn) for conn in conns])
+                    _len += np.average([self.connection.lane.getLength(conn) for conn in conns])
         # add avg_len_lanes[normal]
         for i in range(idx):
             _len += self.edgeLen(edges[i])
@@ -347,16 +353,16 @@ class Simulation:
 
     def wholeRouteLen(self, routeID):
         if routeID not in self.__route_len:
-            edges = traci.route.getEdges(routeID)
+            edges = self.connection.route.getEdges(routeID)
             tmp_len = self.edgeLen(edges[-1])
             self.__route_len[routeID] = \
                 self.routeLen(routeID, -1) + tmp_len
         return self.__route_len[routeID]
 
     def disToEnd(self, vehID):
-        lanePos = traci.vehicle.getLanePosition(vehID)
-        routeID = traci.vehicle.getRouteID(vehID)
-        routeIdx = traci.vehicle.getRouteIndex(vehID)
+        lanePos = self.connection.vehicle.getLanePosition(vehID)
+        routeID = self.connection.vehicle.getRouteID(vehID)
+        routeIdx = self.connection.vehicle.getRouteIndex(vehID)
         mileage_cap = self.est_mileage(routeID, routeIdx, lanePos)
         journey = self.wholeRouteLen(routeID)
         return journey - mileage_cap
@@ -368,30 +374,30 @@ class Simulation:
     def tryStopVeh(self, vehID, spd, currentRd, lanePos, routeID, routeIdx):
         # if '221888670#10__15.46' == vehID:
         #     a = 1
-        if vehID not in self.__stopped_from and traci.vehicle.getStopState(vehID) == 1:
+        if vehID not in self.__stopped_from and self.connection.vehicle.getStopState(vehID) == 1:
             self.__stopped_from[vehID] = self.__now
         if spd <= 0:
             return True
-        if int(traci.vehicle.getLaneID(vehID).split('_')[1]) > 1:
-            traci.vehicle.changeLane(vehID, 1, duration=2)
+        if int(self.connection.vehicle.getLaneID(vehID).split('_')[1]) > 1:
+            self.connection.vehicle.changeLane(vehID, 1, duration=2)
             return False
-        if traci.vehicle.getLaneID(vehID).split('_')[1] != '0':
+        if self.connection.vehicle.getLaneID(vehID).split('_')[1] != '0':
             if spd > 3:
-                traci.vehicle.slowDown(vehID, 1, 1)
-            if len(traci.vehicle.getRightLeaders(vehID)) == 0 or traci.vehicle.getRightLeaders(vehID)[0][1] > 10:
+                self.connection.vehicle.slowDown(vehID, 1, 1)
+            if len(self.connection.vehicle.getRightLeaders(vehID)) == 0 or self.connection.vehicle.getRightLeaders(vehID)[0][1] > 10:
                 #  0 车道上具有足够的空间提供减速或者变道
-                traci.vehicle.changeLane(vehID, 0, duration=2)
+                self.connection.vehicle.changeLane(vehID, 0, duration=2)
             return False
         elif spd > 0.1:
-            traci.vehicle.slowDown(vehID, 0, 1)
+            self.connection.vehicle.slowDown(vehID, 0, 1)
             return False
         else:
-            edges = traci.route.getEdges(routeID)
+            edges = self.connection.route.getEdges(routeID)
             newRoute = edges[routeIdx:]
             try:
-                if traci.vehicle.isStopped(vehID) is False and currentRd in edges:
-                    traci.vehicle.insertStop(vehID, 0, currentRd, pos=lanePos, laneIndex=0)
-                    traci.vehicle.setRoute(vehID, newRoute)
+                if self.connection.vehicle.isStopped(vehID) is False and currentRd in edges:
+                    self.connection.vehicle.insertStop(vehID, 0, currentRd, pos=lanePos, laneIndex=0)
+                    self.connection.vehicle.setRoute(vehID, newRoute)
                     return True
                 else:
                     return False
@@ -403,7 +409,7 @@ class Simulation:
         if vehID not in self.__restart_from:
             self.__restart_from[vehID] = self.__now
         try:
-            traci.vehicle.resume(vehID)
+            self.connection.vehicle.resume(vehID)
         except Exception:
             print("DEBUG resumeVeh exception")
 
@@ -412,26 +418,26 @@ class Simulation:
 
     def set_veh_sped(self, vehID, sped):
         try:
-            traci.vehicle.setSpeed(vehID, sped)
+            self.connection.vehicle.setSpeed(vehID, sped)
         except Exception:
             print('set speed error')
 
     def get_time(self):
-        return traci.simulation.getTime()
+        return self.connection.simulation.getTime()
 
     def get_neighbor_veh(self, veh_id, dis=50.0):
-        if veh_id in traci.vehicle.getIDList():
-            follower_veh = traci.vehicle.getFollower(veh_id, dis)
-            leader_veh = traci.vehicle.getLeader(veh_id, dis)
+        if veh_id in self.connection.vehicle.getIDList():
+            follower_veh = self.connection.vehicle.getFollower(veh_id, dis)
+            leader_veh = self.connection.vehicle.getLeader(veh_id, dis)
             return leader_veh, follower_veh
         return None, None
 
     def get_veh_status(self, veh_id):
-        if veh_id in traci.vehicle.getIDList():
-            speed = traci.vehicle.getSpeed(veh_id)
-            current = traci.simulation.getTime()
-            pos = traci.vehicle.getLaneID(veh_id)
-            leader_veh = traci.vehicle.getLeader(veh_id)
+        if veh_id in self.connection.vehicle.getIDList():
+            speed = self.connection.vehicle.getSpeed(veh_id)
+            current = self.connection.simulation.getTime()
+            pos = self.connection.vehicle.getLaneID(veh_id)
+            leader_veh = self.connection.vehicle.getLeader(veh_id)
             return VehStatus(veh_id, speed, current, pos, leader_veh[0] if leader_veh is not None else '')
         else:
             return None
@@ -440,7 +446,14 @@ class Simulation:
         return self.__target_logs
 
     def close(self):
-        return traci.close()
+        try:
+            if self.connection is not None:
+                self.connection.close()
+                self.connection = None
+                return True
+        except TraCIException as e:
+            return False
+
 
 
 if __name__ == '__main__':
@@ -449,4 +462,4 @@ if __name__ == '__main__':
     sim.runUntilTargetShow()
     # for v_id in sim._Simulation__target_veh_ids:
     #     print(sim.observe(v_id))
-    traci.close(False)
+    # self.connectionclose(False)

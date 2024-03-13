@@ -8,43 +8,13 @@ import pyswarms as ps
 from pyswarms.utils.functions import single_obj as fx
 from pyswarms.utils.plotters.formatters import Mesher
 
-from Simulation import Simulation
+from calibration.Fullsim import Fullsim
+from multi_veh_valid import Validation
 
 
-sumo_config = './conf/aofeng.sumocfg'
-sumo_rd_net_url = './conf/xuancheng1116_6.net.xml'
-veh_logs_train = './conf/veh_log_train.csv'
-
-
-class Fullsim(Simulation):
-
-    def run_until_end(self):
-        ans = np.Inf
-        while self.connection.simulation.getMinExpectedNumber() > 0:
-            self.step()
-        if self.connection.simulation.getMinExpectedNumber() <= 0:
-            ans = self.calPerformance()
-        return ans
-
-    def set_para(self, para):
-        tau = para[0]
-        mgap = para[1]
-        mspd = para[2]
-        tids = self.connection.vehicletype.getIDList()
-        for tid in tids:
-            self.connection.vehicletype.setTau(tid, tau)
-            self.connection.vehicletype.setMinGap(tid, mgap)
-        eids = self.connection.edge.getIDList()
-        for eid in eids:
-            self.connection.edge.setMaxSpeed(eid, mspd)
-
-    def run_with(self, para):
-        self.connectSumo()
-        self.set_para(para)
-        single_ans = self.run_until_end()
-        self.connection.close()
-        self.reset_sim_mem()
-        return single_ans
+sumo_config = 'conf/aofeng.sumocfg'
+sumo_rd_net_url = 'conf/xuancheng1116_6.net.xml'
+veh_logs_train = 'conf/veh_stop_truth.csv'
 
 
 class Simthread(threading.Thread):
@@ -59,8 +29,19 @@ class Simthread(threading.Thread):
         threading.Thread.__init__(self)
         self.threadID = Simthread.thread_current_id
         self.name = 'thread_' + str(self.threadID)
-        self.engine = Fullsim(sumo_config, sumo_rd_net_url, veh_logs_train, need_gui=False,
-                              label='eng'+str(self.threadID))
+        # self.engine = Fullsim(sumo_config, sumo_rd_net_url, veh_logs_train, need_gui=False,
+        #                       label='eng'+str(self.threadID))
+        sumo_config = './conf/aofeng.sumocfg'
+        sumo_rd_net_url = './conf/xuancheng1116_6.net.xml'
+        sumo_target_logs_csv = './conf/veh_stop_truth.csv'
+        # outputs
+        best_model_path = 'model/aofeng/18_epoch_model.pt'
+
+        n_actions = 4
+        n_observations = 7
+        self.engine = Validation(sumo_config, sumo_rd_net_url,
+                                 sumo_target_logs_csv, best_model_path, n_observations, n_actions,
+                                 label='eng'+str(self.threadID))
         Simthread.thread_current_id += 1
 
     def run(self):
@@ -101,6 +82,7 @@ def push_works(heads: list):
 
 
 def end_threads():
+    print('执行end')
     while not Simthread.workQueue.empty():
         pass
     Simthread.exitFlag = 1
@@ -126,11 +108,22 @@ def batch(para_array: np.array):
 if __name__ == '__main__':
     t_start = time.time()
 
-    # # unittest for single simulation controls
+    # unittest for single simulation controls
     # fsim = Fullsim(sumo_config, sumo_rd_net_url, veh_logs_train, need_gui=False)
-    # for ith in range(10):
-    #     ans = fsim.run_with(np.array([2, 2, 20]))
-    #     print(str(ith) + " exp: " + str(ans))
+    sumo_config = './conf/aofeng.sumocfg'
+    sumo_rd_net_url = './conf/xuancheng1116_6.net.xml'
+    sumo_target_logs_csv = './conf/veh_stop_truth.csv'
+    # outputs
+    best_model_path = 'model/aofeng/18_epoch_model.pt'
+
+    n_actions = 4
+    n_observations = 7
+    engine = Validation(sumo_config, sumo_rd_net_url,
+                             sumo_target_logs_csv, best_model_path, n_observations, n_actions,
+                             label='eng0')
+    for ith in range(1):
+        ans = engine.run_with(np.array([2, 2, 20]))
+        print(str(ith) + " exp: " + str(ans))
 
     # # unittest for multiple simulation controls
     # for i_core in range(5):
@@ -143,41 +136,47 @@ if __name__ == '__main__':
     # test for pso
 
     # 根据cpu核心数确定
-    for i_core in range(5):
-        create_threads()
-
-    # bounds
-    # [tau minGap maxSpd]
-    lower = np.array([0.5, 0.5, 20])
-    upper = np.array([2, 2, 40])
-    bounds = (lower, upper)
-    # max_bound = 5.12 * np.ones(2)
-    # min_bound = - max_bound
-    # bounds = (min_bound, max_bound)
-
-    # Initialize swarm
-    options = {'c1': 0.5, 'c2': 0.3, 'w': 0.9}
-
-    # Call instance of PSO with bounds argument
-    optimizer = ps.single.GlobalBestPSO(n_particles=5, dimensions=3, options=options, bounds=bounds)
-
-    # Perform optimization
-    cost, pos = optimizer.optimize(batch, iters=4)
-    # 历史解
-    # pickle.dump(optimizer.pos_history, 'pos_history.pickle')
-    # 每代最优目标函数
-    # pickle.dump(optimizer.cost_history, 'cost_history.pickle')
-
-    # Initialize mesher with objected function
-    m = Mesher(func=batch)
-    # 会讲历史解重算一次，非必要请勿使用
-    ph3d = m.compute_history_3d(optimizer.pos_history)
-    # pickle.dump(ph3d, 'ph3d.pickle')
-
-    end_threads()
-
-    duration = time.time() - t_start
-    print("used time: " + str(duration) + " s.")
-
-    print("DEBUG")
+    # for i_core in range(1):
+    #     create_threads()
+    #
+    # # bounds
+    # # [tau minGap maxSpd]
+    # lower = np.array([0.5, 0.5, 20])
+    # upper = np.array([2, 2, 40])
+    # bounds = (lower, upper)
+    # # max_bound = 5.12 * np.ones(2)
+    # # min_bound = - max_bound
+    # # bounds = (min_bound, max_bound)
+    #
+    # # Initialize swarm
+    # options = {'c1': 0.5, 'c2': 0.3, 'w': 0.9}
+    #
+    # # Call instance of PSO with bounds argument
+    # optimizer = ps.single.GlobalBestPSO(n_particles=1, dimensions=3, options=options, bounds=bounds)
+    #
+    # # Perform optimization
+    # cost, pos = optimizer.optimize(batch, iters=2)
+    # # 历史解
+    # pos_his = open("calibration/record/pos_history.pickle", 'wb')
+    # pickle.dump(optimizer.pos_history, pos_his)
+    # pos_his.close()
+    # # 每代最优目标函数
+    # cos_his = open("calibration/record/cost_history.pickle", 'wb')
+    # pickle.dump(optimizer.cost_history, cos_his)
+    # cos_his.close()
+    #
+    # # Initialize mesher with objected function
+    # # m = Mesher(func=batch)
+    # # 会讲历史解重算一次，非必要请勿使用
+    # # ph3d_his = open('calibration/record/pos_history.pickle', 'wb')
+    # # ph3d = m.compute_history_3d(optimizer.pos_history)
+    # # pickle.dump(ph3d, ph3d_his)
+    # # ph3d_his.close()
+    #
+    # end_threads()
+    #
+    # duration = time.time() - t_start
+    # print("used time: " + str(duration) + " s.")
+    #
+    # print("DEBUG")
     # https: // pyswarms.readthedocs.io / en / latest / examples / tutorials / visualization.html  # Plotting-in-2-D-space

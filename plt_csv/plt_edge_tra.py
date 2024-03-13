@@ -1,12 +1,14 @@
 import pandas as pd
-import math
+from matplotlib import pyplot as plt
+import seaborn as sns
+plt.rcParams['font.sans-serif'] = ['Arial Unicode MS']
 
 # 读取停车指令发送时刻
 # target = pd.read_csv('../sim_dict.csv')
 target2 = pd.read_csv('../conf/veh_stop_truth.csv')
 # data = pd.read_csv('../conf/random_stop_test_fcd4calib.csv', sep=';')
 
-stop = pd.read_csv('../conf/test_tripinfo.csv', sep=';')
+stop = pd.read_csv('../conf/test_tripinfo_备份.csv', sep=';')
 stop2 = stop[stop['tripinfo_id'].isin(target2['vehID']) & (stop['tripinfo_stopTime'] == 0)]
 
 data2 =pd.merge(target2[['vehID', 'in_time','out_time']],
@@ -41,3 +43,21 @@ print(data3['e3'].apply(abs).mean())
 
 
 print()
+# 1.创建画布
+plt.figure(figsize=(32, 8), dpi=100)
+
+plt.subplots_adjust(bottom=0.15)
+sns.distplot(stop_truth['tripinfo_duration'], hist = {'color':'green'}, kde_kws = False,
+             norm_hist = False, label = ('停车','核密度图'))
+
+plt.xlabel('时间')
+plt.ylabel('数量')
+# plt.xlim([-25,100])
+# plt.ylim([0,600])
+
+
+# sns.set(style="whitegrid", font_scale=5.1)
+plt.title('车辆行程时间', fontsize=16)
+# plt.legend()
+# plt.savefig('111.pdf', bbox_inches='tight', pad_inches=0.5)
+plt.show()

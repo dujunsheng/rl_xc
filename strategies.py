@@ -213,10 +213,11 @@ class Optimizer(object):
 
 
 class ActionSelector(object):
-    def __init__(self, n_actions, optimizer: Optimizer):
+    def __init__(self, n_actions, optimizer: Optimizer, sim:Simulation):
         self.steps_done = 0
         self.n_actions = n_actions
         self.optimizer = optimizer
+        self.sim = sim
 
     def eps_threshold(self):
         eps_threshold = EPS_END + (EPS_START - EPS_END) * \
@@ -228,14 +229,14 @@ class ActionSelector(object):
         withdraw = random.random()
         eps_threshold = self.eps_threshold()
 
-        currentLane = traci.vehicle.getLaneID(veh.veh_id)
+        currentLane = self.sim.connection.vehicle.getLaneID(veh.veh_id)
         park_areas = ['64422', '63366']
         if veh.current.state is None:
             return -1
         elif currentLane.split('_')[0] not in park_areas:
             # 车辆所在道路没有停靠区域
             return 0
-        elif currentLane == '' or (traci.lane.getLength(currentLane) < 100) or veh.tooCloseToPark():
+        elif currentLane == '' or (self.sim.connection.lane.getLength(currentLane) < 100) or veh.tooCloseToPark():
             return 0
         elif veh.been_halted:
             return 0
